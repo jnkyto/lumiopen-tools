@@ -63,7 +63,7 @@ def main(argv):
         evaluation_strategy='steps',
         save_strategy='no',
         eval_steps=100,
-        num_train_epochs=1,
+        num_train_epochs=10,
         bf16=True,
         bf16_full_eval=True
     )
