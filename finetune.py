@@ -66,8 +66,8 @@ def main(argv):
         num_train_epochs=10,
         bf16=True,
         bf16_full_eval=True,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8
     )
     #print(f"Args {train_args}")
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
