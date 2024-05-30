@@ -83,6 +83,8 @@ def main(argv):
         save_strategy='no',
         eval_steps=100,
         num_train_epochs=1,
+        bf16=True,
+        bf16_full_eval=True
     )
 
     model = AutoModelForCausalLM.from_pretrained(
