@@ -77,6 +77,14 @@ def main(argv):
     # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
     # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
 
+    train_args = TrainingArguments(
+        output_dir='train_output',
+        evaluation_strategy='steps',
+        save_strategy='no',
+        eval_steps=100,
+        num_train_epochs=1,
+    )
+
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         torch_dtype="auto",
@@ -86,14 +94,6 @@ def main(argv):
         tokenizer=tokenizer,
         return_tensors='pt',
         mlm=False,
-    )
-
-    train_args = TrainingArguments(
-        output_dir='train_output',
-        evaluation_strategy='steps',
-        save_strategy='no',
-        eval_steps=100,
-        num_train_epochs=1,
     )
 
     trainer = Trainer(
