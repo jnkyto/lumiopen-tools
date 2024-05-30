@@ -65,7 +65,9 @@ def main(argv):
         eval_steps=100,
         num_train_epochs=10,
         bf16=True,
-        bf16_full_eval=True
+        bf16_full_eval=True,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16
     )
     #print(f"Args {train_args}")
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
@@ -106,6 +108,7 @@ def main(argv):
     result = trainer.evaluate()
     print(f'loss before training: {result["eval_loss"]:.2f}')
 
+    trainer.accelerator.wait_for_everyone()
     trainer.train()
 
     result = trainer.evaluate()
