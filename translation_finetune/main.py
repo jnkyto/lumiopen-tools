@@ -94,7 +94,6 @@ def main(argv):
             per_device_train_batch_size=32,
             per_device_eval_batch_size=32,
             learning_rate=3e-5,
-            no_cuda=True
         )
 
         model = AutoModelForCausalLM.from_pretrained(
