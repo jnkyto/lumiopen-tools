@@ -16,15 +16,19 @@ from transformers import (
     Trainer,
 )
 
+import accelerate
+import deepspeed
+
 DEFAULT_MODEL = 'LumiOpen/Poro-34B'
 
 
 def argparser():
     ap = ArgumentParser()
     ap.add_argument('--key', default='text')
-    ap.add_argument('--verbose', action='store_true')
+    ap.add_argument('--verbose', action='store_true', default=False)
     ap.add_argument('--max-length', type=int, default=1024)
-    ap.add_argument('--model', default=DEFAULT_MODEL)
+    ap.add_argument('--model', type=str, default=DEFAULT_MODEL)
+    ap.add_argument('--dry', '-d', action='store_true', default=False)
     return ap
 
 
@@ -58,8 +62,6 @@ def main(argv):
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
     ds = ds.shuffle(random.seed(5834))  # Shuffle dataset
 
-    data = prepper(data=ds.select(range(10000)))    # Limit amount of samples
-
     tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     def tokenize(example):
@@ -67,60 +69,68 @@ def main(argv):
             example,
             max_length=args.max_length,
             truncation=True,
+            return_tensors="pt",
         )
 
+    data = prepper(data=ds.select(range(10000)))  # Limit amount of samples
     data_train_tokenized = list(map(tokenize, data["train"]))
     data_test_tokenized = list(map(tokenize, data["test"]))
 
-    # print(data["train"][0])
-    # print(data["test"][0])
-    # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
-    # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
+    # logger.info("Sanity checks:")
+    # logger.info(data["train"][0])
+    # logger.info(data["test"][0])
+    # logger.info(f"{type(data_train_tokenized)}; {len(data_train_tokenized)}; {data_train_tokenized[0]}")
+    # logger.info(f"{type(data_test_tokenized)}; {len(data_test_tokenized)}; {data_test_tokenized[0]}\n")
 
-    train_args = TrainingArguments(
-        output_dir='train_output',
-        evaluation_strategy='steps',
-        save_strategy='no',
-        eval_steps=100,
-        num_train_epochs=10,
-        bf16=True,
-        bf16_full_eval=True,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8
-    )
+    if not args.dry:
+        train_args = TrainingArguments(
+            output_dir='train_output',
+            evaluation_strategy='steps',
+            save_strategy='no',
+            eval_steps=100,
+            num_train_epochs=1,
+            bf16=True,
+            bf16_full_eval=True,
+            per_device_train_batch_size=32,
+            per_device_eval_batch_size=32,
+            learning_rate=3e-5,
+            no_cuda=True
+        )
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype="auto",
-    )
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype="auto",
+        )
 
-    collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        return_tensors='pt',
-        mlm=False,
-    )
+        collator = DataCollatorForLanguageModeling(
+            tokenizer=tokenizer,
+            return_tensors='pt',
+            mlm=False,
+        )
 
-    trainer = Trainer(
-        args=train_args,
-        model=model,
-        tokenizer=tokenizer,
-        data_collator=collator,
-        train_dataset=data_train_tokenized,
-        eval_dataset=data_test_tokenized,
-    )
+        trainer = Trainer(
+            args=train_args,
+            model=model,
+            tokenizer=tokenizer,
+            data_collator=collator,
+            train_dataset=data_train_tokenized,
+            eval_dataset=data_test_tokenized,
+        )
 
-    # result = trainer.evaluate()
-    # print(f'loss before training: {result["eval_loss"]:.2f}')
+        result = trainer.evaluate()
+        print(f'loss before training: {result["eval_loss"]:.2f}')
 
-    trainer.accelerator.wait_for_everyone()
-    trainer.train()
+        trainer.accelerator.wait_for_everyone()
+        trainer.train()
 
-    result = trainer.evaluate()
-    print(f'loss after training: {result["eval_loss"]:.2f}')
+        result = trainer.evaluate()
+        print(f'loss after training: {result["eval_loss"]:.2f}')
 
-    # Save model
-    trainer.save_state()
-    trainer.save_model()
+        # Save model
+        trainer.save_state()
+        trainer.save_model()
+
+    return 0
 
 
 if __name__ == '__main__':
