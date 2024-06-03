@@ -94,9 +94,9 @@ def main(argv):
         evaluation_strategy='steps',
         save_strategy='no',
         eval_steps=100,
-        num_train_epochs=1,
-        per_device_eval_batch_size=1,
-        per_device_train_batch_size=1,
+        num_train_epochs=3,
+        per_device_eval_batch_size=args.batch_size,
+        per_device_train_batch_size=args.batch_size,
         learning_rate=5e-5,
     )
 
