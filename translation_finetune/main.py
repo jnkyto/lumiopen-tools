@@ -24,6 +24,7 @@ def argparser():
     ap.add_argument('--key', default='text')
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--max-length', type=int, default=1024)
+    ap.add_argument("--batch_size", "-b", type=int, default=16)
     ap.add_argument('--model', default=DEFAULT_MODEL)
     return ap
 
@@ -94,6 +95,9 @@ def main(argv):
         save_strategy='no',
         eval_steps=100,
         num_train_epochs=1,
+        per_device_eval_batch_size=1,
+        per_device_train_batch_size=1,
+        learning_rate=5e-5,
     )
 
     trainer = Trainer(
