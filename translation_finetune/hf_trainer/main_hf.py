@@ -25,6 +25,7 @@ def argparser():
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--max-length', type=int, default=1024)
     ap.add_argument("--batch_size", "-b", type=int, default=16)
+    ap.add_argument("--epochs", "-e", type=int, default=4)
     ap.add_argument('--model', default=DEFAULT_MODEL)
     return ap
 
@@ -84,7 +85,7 @@ def main(argv):
         evaluation_strategy="steps",
         save_strategy="no",
         eval_steps=100,
-        num_train_epochs=2,
+        num_train_epochs=args.epochs,
         per_device_eval_batch_size=args.batch_size,
         per_device_train_batch_size=args.batch_size,
         learning_rate=5e-5,
