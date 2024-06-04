@@ -80,7 +80,7 @@ def main(argv):
 
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
-        torch_dtype="bfloat16",
+        torch_dtype=torch.bfloat16
     )
 
     collator = DataCollatorForLanguageModeling(
