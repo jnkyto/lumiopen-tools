@@ -94,7 +94,7 @@ def main(argv):
         evaluation_strategy='steps',
         save_strategy='no',
         eval_steps=100,
-        num_train_epochs=3,
+        num_train_epochs=2,
         per_device_eval_batch_size=args.batch_size,
         per_device_train_batch_size=args.batch_size,
         learning_rate=5e-5,
@@ -109,14 +109,17 @@ def main(argv):
         eval_dataset=data_test_tokenized,
     )
 
+    trainer.accelerator.wait_for_everyone()
     result = trainer.evaluate()
     print(f'loss before training: {result["eval_loss"]:.2f}')
 
     trainer.train()
 
+    trainer.accelerator.wait_for_everyone()
     result = trainer.evaluate()
     print(f'loss after training: {result["eval_loss"]:.2f}')
 
+    trainer.accelerator.wait_for_everyone()
     # Save model
     trainer.save_state()
     trainer.save_model()
