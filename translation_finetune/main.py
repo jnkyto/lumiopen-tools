@@ -57,6 +57,7 @@ def main(argv):
     args = argparser().parse_args(argv[1:])
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
+
     ds = ds.shuffle(random.seed(5834))  # Shuffle dataset
 
     data = prepper(data=ds.select(range(10000)))    # Limit amount of samples
