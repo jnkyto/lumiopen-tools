@@ -79,17 +79,6 @@ def main(argv):
     # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
     # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16
-    )
-
-    collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        return_tensors='pt',
-        mlm=False,
-    )
-
     train_args = TrainingArguments(
         output_dir="train_output",
         evaluation_strategy="steps",
@@ -104,6 +93,17 @@ def main(argv):
         gradient_accumulation_steps=1,
         log_on_each_node=False,
         log_level="info",
+    )
+
+    model = AutoModelForCausalLM.from_pretrained(
+        args.model,
+        torch_dtype=torch.bfloat16
+    )
+
+    collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        return_tensors='pt',
+        mlm=False,
     )
 
     trainer = Trainer(
