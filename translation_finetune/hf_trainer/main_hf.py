@@ -116,10 +116,10 @@ def main(argv):
         eval_dataset=data_test_tokenized,
     )
 
-    trainer.accelerator.wait_for_everyone()
     result = trainer.evaluate()
     print(f'loss before training: {result["eval_loss"]:.2f}')
 
+    trainer.accelerator.wait_for_everyone()
     trainer.train()
 
     trainer.accelerator.wait_for_everyone()
