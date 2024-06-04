@@ -161,3 +161,8 @@ cython_debug/
 .idea/
 data/
 data/*
+mlruns/
+mlruns/*
+mlruns
+*.tfevents.*
+logs/*
