@@ -80,7 +80,7 @@ def main(argv):
 
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
-        torch_dtype="auto",
+        torch_dtype="bfloat16",
     )
 
     collator = DataCollatorForLanguageModeling(
@@ -90,14 +90,19 @@ def main(argv):
     )
 
     train_args = TrainingArguments(
-        output_dir='train_output',
-        evaluation_strategy='steps',
-        save_strategy='no',
+        output_dir="train_output",
+        evaluation_strategy="steps",
+        save_strategy="no",
         eval_steps=100,
         num_train_epochs=2,
         per_device_eval_batch_size=args.batch_size,
         per_device_train_batch_size=args.batch_size,
         learning_rate=5e-5,
+        bf16=True,
+        bf16_full_eval=True,
+        gradient_accumulation_steps=1,
+        log_on_each_node=False,
+        log_level="info",
     )
 
     trainer = Trainer(
