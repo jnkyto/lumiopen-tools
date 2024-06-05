@@ -6,7 +6,7 @@ import torch
 import random
 
 from argparse import ArgumentParser
-from accelerate import Accelerator, logging
+from accelerate import Accelerator
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
@@ -22,14 +22,13 @@ from transformers import (
 
 accelerator = Accelerator()
 default_model = 'LumiOpen/Poro-34B'
-logger = logging.get_logger(__file__)
 
 
 def argparser():
     ap = ArgumentParser()
     ap.add_argument('--key', default='text')
     ap.add_argument('--verbose', action='store_true')
-    ap.add_argument('--max_length', type=int, default=1024)
+    ap.add_argument('--max_length', "-l", type=int, default=1024)
     ap.add_argument("--batch_size", "-b", type=int, default=16)
     ap.add_argument("--epochs", "-e", type=int, default=4)
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
@@ -52,9 +51,7 @@ def prepper(translations):
 
 
 def main(argv):
-    logger.info("Successfully started finetuning script.")
     args = argparser().parse_args(argv[1:])
-    logger.debug(f"{args=}")
     tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
@@ -129,10 +126,7 @@ def main(argv):
             model, train_dataloader, test_dataloader, optimizer, lr_scheduler
         )
 
-        logger.info(f"Starting finetuning.")
-        logger.debug(f"{num_epochs=}, {lr=}, {gradient_accumulation_steps=}")
         for epoch in range(num_epochs):
-            logger.info(f"Epoch {epoch+1} of {num_epochs}.")
             model.train()
             total_loss = 0
 
@@ -150,8 +144,6 @@ def main(argv):
 
                     # Batch analytic capture should go right here
 
-            logger.info(f"Current total loss: {total_loss}.")
-            logger.info("Starting evaluation.")
             model.eval()
             eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
@@ -160,10 +152,8 @@ def main(argv):
                 loss = outputs.loss
                 eval_loss += loss.detach().float()
 
-            logger.info(f"Evaluation loss: {eval_loss}.")
             curr_date = datetime.now().isoformat("#", "minutes")
             saved_model_name = f"trained-e{epoch}-{curr_date}"
-            logger.info(f"Saving trained model as {saved_model_name}.")
             model.save_pretrained(saved_model_name)
 
 
