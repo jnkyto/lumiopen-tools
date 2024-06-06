@@ -99,8 +99,8 @@ def main(argv):
         ).remove_columns("translation")["samples"]
 
     def collate_fn(batch):
-        inputs = {key: torch.tensor([item['input'][key] for item in batch]) for key in batch[0]['input'].keys()}
-        outputs = {key: torch.tensor([item['output'][key] for item in batch]) for key in batch[0]['output'].keys()}
+        inputs = [item["input"] for item in batch]
+        outputs = [item["output"] for item in batch]
         return {"input": inputs, "output": outputs}
 
     train_dataloader = DataLoader(
@@ -152,8 +152,9 @@ def main(argv):
             total_loss = 0
 
             for step, batch in enumerate(tqdm(train_dataloader)):
-                outputs = model(**batch["input"][step])
-                loss = loss_fn(outputs, **batch["output"][step])
+                inputs = batch["input"]
+                outputs = model(**inputs)
+                loss = loss_fn(outputs, **inputs)
                 total_loss += loss.detach().float()
                 accelerator.backward(loss)
 
@@ -168,9 +169,10 @@ def main(argv):
             model.eval()
             eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
+                inputs = batch["input"]
                 with torch.no_grad():
-                    outputs = model(**batch["input"][step])
-                loss = loss_fn(outputs, **batch["output"][step])
+                    outputs = model(**inputs)
+                loss = loss_fn(outputs, **inputs)
                 eval_loss += loss.detach().float()
             analytics(epoch, "test", total_loss)
             saved_model_name = f"trained-e{epoch}-{curr_date}"
