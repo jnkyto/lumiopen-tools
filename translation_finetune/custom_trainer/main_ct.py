@@ -155,7 +155,7 @@ def main(argv):
 
             for step, batch in enumerate(tqdm(train_dataloader)):
                 inputs = batch["input"]
-                outputs = batch["output"]
+                outputs = batch["output"]["input_ids"]
                 model_out = model(**inputs)
                 logits = model_out.logits
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
