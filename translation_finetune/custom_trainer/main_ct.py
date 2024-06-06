@@ -71,12 +71,14 @@ def main(argv):
             translations["samples"][idx]["input"] = tokenizer(
                 entry["input"],
                 max_length=args.max_length,
-                padding="longest"
+                padding="max_length",
+                truncation=True
             )
             translations["samples"][idx]["output"] = tokenizer(
                 entry["output"],
                 max_length=args.max_length,
-                padding="longest"
+                padding="max_length",
+                truncation=True
             )
 
         return translations
