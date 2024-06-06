@@ -101,18 +101,17 @@ def main(argv):
     # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
     # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
 
-    collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        return_tensors='pt',
-        mlm=False,
-    )
+    def collate_fn(batch):
+        inputs = [item["input"] for item in batch]
+        outputs = [item["output"] for item in batch]
+        return {"input": inputs, "output": outputs}
 
     train_dataloader = DataLoader(
-        data_train_tokenized, collate_fn=collator, batch_size=args.batch_size, pin_memory=True
+        data_train_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
     )
 
     test_dataloader = DataLoader(
-        data_test_tokenized, collate_fn=collator, batch_size=args.batch_size, pin_memory=True
+        data_test_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
     )
 
     if not args.dry_run:
