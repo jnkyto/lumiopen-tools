@@ -148,7 +148,7 @@ def main(argv):
             filename = f"./analytics/{curr_date}-e{epoch}_analytics.csv"
             append_to_csv(filename=filename, row=[epoch, split, loss])
 
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
         for epoch in range(num_epochs):
             model.train()
             total_loss = 0
