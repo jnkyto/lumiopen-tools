@@ -176,13 +176,15 @@ def main(argv):
             eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
                 inputs = batch["input"]
-                outputs = batch["output"]
+                outputs = batch["output"]["input_ids"]
                 with torch.no_grad():
                     model_out = model(**inputs)
                 logits = model_out.logits
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
                 eval_loss += loss.detach().float()
-            analytics(epoch, "test", total_loss)
+                
+            analytics(epoch, "test", eval_loss)
+            
             saved_model_name = f"trained-e{epoch}-{curr_date}"
             model.save_pretrained(saved_model_name)
 
