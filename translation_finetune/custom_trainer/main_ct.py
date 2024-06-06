@@ -156,7 +156,8 @@ def main(argv):
             for step, batch in enumerate(tqdm(train_dataloader)):
                 inputs = batch["input"]
                 outputs = batch["output"]
-                logits = model(**inputs)
+                model_out = model(**inputs)
+                logits = model_out.logits
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
                 total_loss += loss.detach().float()
                 accelerator.backward(loss)
@@ -175,7 +176,8 @@ def main(argv):
                 inputs = batch["input"]
                 outputs = batch["output"]
                 with torch.no_grad():
-                    logits = model(**inputs)
+                    model_out = model(**inputs)
+                logits = model_out.logits
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
                 eval_loss += loss.detach().float()
             analytics(epoch, "test", total_loss)
