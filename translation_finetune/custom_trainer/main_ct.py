@@ -71,12 +71,12 @@ def main(argv):
             translations["samples"][idx]["input"] = tokenizer(
                 entry["input"],
                 max_length=args.max_length,
-                truncation=True
+                padding=True
             )
             translations["samples"][idx]["output"] = tokenizer(
                 entry["output"],
                 max_length=args.max_length,
-                truncation=True
+                padding=True
             )
 
         return translations
@@ -111,8 +111,10 @@ def main(argv):
         data_test_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
     )
 
-    # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
-    # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
+    if True:
+        for i, entry in enumerate(train_dataloader):
+            if i in range(10):
+                print(entry)
 
     if not args.dry_run:
         # Training arguments
