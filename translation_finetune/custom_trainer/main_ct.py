@@ -152,8 +152,8 @@ def main(argv):
             total_loss = 0
 
             for step, batch in enumerate(tqdm(train_dataloader)):
-                outputs = model(batch["input"][step])
-                loss = loss_fn(outputs, batch["output"][step])
+                outputs = model(**batch["input"][step])
+                loss = loss_fn(outputs, **batch["output"][step])
                 total_loss += loss.detach().float()
                 accelerator.backward(loss)
 
@@ -169,8 +169,8 @@ def main(argv):
             eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
                 with torch.no_grad():
-                    outputs = model(batch["input"][step])
-                loss = loss_fn(outputs, batch["output"][step])
+                    outputs = model(**batch["input"][step])
+                loss = loss_fn(outputs, **batch["output"][step])
                 eval_loss += loss.detach().float()
             analytics(epoch, "test", total_loss)
             saved_model_name = f"trained-e{epoch}-{curr_date}"
