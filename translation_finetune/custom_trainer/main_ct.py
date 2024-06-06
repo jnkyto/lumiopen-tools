@@ -98,9 +98,6 @@ def main(argv):
             load_from_cache_file=False,
         ).remove_columns("translation")["samples"]
 
-    # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
-    # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
-
     def collate_fn(batch):
         inputs = [item["input"] for item in batch]
         outputs = [item["output"] for item in batch]
@@ -113,6 +110,9 @@ def main(argv):
     test_dataloader = DataLoader(
         data_test_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
     )
+
+    # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
+    # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
 
     if not args.dry_run:
         # Training arguments
@@ -152,8 +152,8 @@ def main(argv):
             total_loss = 0
 
             for step, batch in enumerate(tqdm(train_dataloader)):
-                outputs = model(batch["input"])
-                loss = loss_fn(outputs, batch["output"])
+                outputs = model(batch["input"][step])
+                loss = loss_fn(outputs, batch["output"][step])
                 total_loss += loss.detach().float()
                 accelerator.backward(loss)
 
@@ -169,8 +169,8 @@ def main(argv):
             eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
                 with torch.no_grad():
-                    outputs = model(batch["input"])
-                loss = loss_fn(outputs, batch["output"])
+                    outputs = model(batch["input"][step])
+                loss = loss_fn(outputs, batch["output"][step])
                 eval_loss += loss.detach().float()
             analytics(epoch, "test", total_loss)
             saved_model_name = f"trained-e{epoch}-{curr_date}"
