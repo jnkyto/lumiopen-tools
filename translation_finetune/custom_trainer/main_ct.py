@@ -143,7 +143,7 @@ def main(argv):
                 writer.writerow(row)
 
         def analytics(epoch, split, loss):
-            filename = f"{curr_date}-e{epoch}_analytics.csv"
+            filename = f"./analytics/{curr_date}-e{epoch}_analytics.csv"
             append_to_csv(filename=filename, row=[epoch, split, loss])
 
         loss_fn = nn.CrossEntropyLoss()
