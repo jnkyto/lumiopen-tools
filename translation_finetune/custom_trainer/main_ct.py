@@ -99,8 +99,8 @@ def main(argv):
         ).remove_columns("translation")["samples"]
 
     def collate_fn(batch):
-        inputs = [item["input"] for item in batch]
-        outputs = [item["output"] for item in batch]
+        inputs = {key: torch.tensor([item['input'][key] for item in batch]) for key in batch[0]['input'].keys()}
+        outputs = {key: torch.tensor([item['output'][key] for item in batch]) for key in batch[0]['output'].keys()}
         return {"input": inputs, "output": outputs}
 
     train_dataloader = DataLoader(
