@@ -13,7 +13,7 @@ import torch.nn as nn
 
 from argparse import ArgumentParser
 from accelerate import Accelerator
-from accelerate.utils import set_seed
+from accelerate.utils import set_seed, ProjectConfiguration
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
@@ -26,10 +26,10 @@ from transformers import (
     AutoModelForCausalLM,
 )
 
-accelerator = Accelerator(gradient_accumulation_steps=4, log_with="tensorboard")
+proj_conf = ProjectConfiguration(project_dir='.', logging_dir='./analytics')
+accelerator = Accelerator(gradient_accumulation_steps=4, log_with="tensorboard", project_config=proj_conf)
 default_model = 'LumiOpen/Poro-34B'
 curr_date = str(datetime.now().isoformat("T", "minutes")).replace(':', '')
-
 
 def argparser():
     ap = ArgumentParser()
@@ -39,9 +39,9 @@ def argparser():
     ap.add_argument("--batch_size", "-b", type=int, default=16)
     ap.add_argument("--epochs", "-e", type=int, default=2)
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
-    ap.add_argument("--dry_run", "-d", action="store_true")
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument('--model', default=default_model)
+    ap.add_argument("--dry_run", "-d", action="store_true")
     return ap
 
 
@@ -140,6 +140,7 @@ def main(argv):
             model, train_dataloader, test_dataloader, optimizer, lr_scheduler
         )
 
+        # These analytic functions are currently unused in favor of TensorBoard
         def append_to_csv(filename, row):
             exists = os.path.isfile(filename)
             with open(filename, 'a' if exists else 'w', newline='', encoding="utf-8") as f:
@@ -151,6 +152,13 @@ def main(argv):
             append_to_csv(filename=filename, row=[split, epoch, step, loss, total_loss])
 
         loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+        accelerator.init_trackers(
+            project_name=f"fine-tune_{curr_date}",
+            config={
+                "num_iterations": num_epochs,
+                "learning_rate": lr,
+                "loss_function": str(loss_fn)
+            })
         for epoch in range(num_epochs):
             model.train()
             total_loss = 0
@@ -166,7 +174,8 @@ def main(argv):
                     total_loss += loss_float
                     accelerator.backward(loss)
 
-                    analytics("train", epoch, step, loss_float, total_loss)
+                    accelerator.log({"training_loss": loss}, step=step)
+                    # analytics("train", epoch, step, loss_float, total_loss)
 
                     # Accelerate should handle gradient accumulation automagically
                     optimizer.step()
@@ -186,7 +195,8 @@ def main(argv):
                 loss_float = loss.detach().float()
                 eval_loss += loss_float
 
-                analytics("test", epoch, step, loss_float, eval_loss)
+                accelerator.log({"evaluation_loss": loss}, step=step)
+                # analytics("test", epoch, step, loss_float, eval_loss)
             
             saved_model_name = f"{curr_date}-e{epoch}"
 
@@ -202,6 +212,10 @@ def main(argv):
             del unwrapped_model
             gc.collect()
             torch.cuda.empty_cache()
+
+        accelerator.end_training()
+
+    return 0
 
 
 if __name__ == '__main__':
