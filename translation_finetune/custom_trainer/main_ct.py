@@ -152,7 +152,7 @@ def main(argv):
         loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
         for epoch in range(num_epochs):
             model.train()
-            total_loss = torch.tensor(0)
+            total_loss = 0
 
             for step, batch in enumerate(tqdm(train_dataloader)):
                 with accelerator.accumulate(model):
@@ -173,7 +173,7 @@ def main(argv):
                     model.zero_grad()
 
             model.eval()
-            eval_loss = torch.tensor(0)
+            eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
                 inputs = batch["input"]
                 outputs = batch["output"]["input_ids"]
