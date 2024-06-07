@@ -10,6 +10,7 @@ import torch.nn as nn
 
 from argparse import ArgumentParser
 from accelerate import Accelerator
+from accelerate.utils import set_seed
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
@@ -20,10 +21,9 @@ from datasets import load_dataset
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
-    DataCollatorForLanguageModeling,
 )
 
-accelerator = Accelerator()
+accelerator = Accelerator(gradient_accumulation_steps=4)
 default_model = 'LumiOpen/Poro-34B'
 curr_date = str(datetime.now().isoformat("T", "minutes")).replace(':', '')
 
@@ -34,7 +34,7 @@ def argparser():
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--max_length', "-l", type=int, default=1024)
     ap.add_argument("--batch_size", "-b", type=int, default=16)
-    ap.add_argument("--epochs", "-e", type=int, default=4)
+    ap.add_argument("--epochs", "-e", type=int, default=2)
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--dry_run", "-d", action="store_true")
     ap.add_argument("--seed", "-s", type=int, default=42)
@@ -60,12 +60,14 @@ def prepper(translations):
 
 def main(argv):
     args = argparser().parse_args(argv[1:])
+    set_seed(args.seed)     # Set Accelerator randomness seed
     tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
     ds = ds.shuffle(random.seed(args.seed)).select(range(10000))  # Shuffle dataset and limit sample amount
     ds = ds.train_test_split(test_size=0.2)
 
+    # TODO: Make tokenization happen within training process
     def tokenize(translations):
         for idx, entry in enumerate(translations["samples"]):
             translations["samples"][idx]["input"] = tokenizer(
@@ -146,9 +148,9 @@ def main(argv):
                 writer = csv.writer(f)
                 writer.writerow(row)
 
-        def analytics(epoch, split, loss):
+        def analytics(split, epoch, step, loss, total_loss):
             filename = f"./analytics/{curr_date}-e{epoch}_analytics.csv"
-            append_to_csv(filename=filename, row=[epoch, split, loss])
+            append_to_csv(filename=filename, row=[split, epoch, step, loss, total_loss])
 
         loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
         for epoch in range(num_epochs):
@@ -156,21 +158,22 @@ def main(argv):
             total_loss = 0
 
             for step, batch in enumerate(tqdm(train_dataloader)):
-                inputs = batch["input"]
-                outputs = batch["output"]["input_ids"]
-                model_out = model(**inputs)
-                logits = model_out.logits
-                loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
-                total_loss += loss.detach().float()
-                accelerator.backward(loss)
+                with accelerator.accumulate(model):
+                    inputs = batch["input"]
+                    outputs = batch["output"]["input_ids"]
+                    model_out = model(**inputs)
+                    logits = model_out.logits
+                    loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
+                    total_loss += loss.detach().float()
+                    accelerator.backward(loss)
 
-                if step % gradient_accumulation_steps == 0:
+                    analytics("train", epoch, step, loss, total_loss)
+
+                    # Accelerate should handle gradient accumulation automagically
                     optimizer.step()
                     lr_scheduler.step()
                     optimizer.zero_grad()
                     model.zero_grad()
-
-            analytics(epoch, "train", total_loss)
 
             model.eval()
             eval_loss = 0
@@ -182,11 +185,19 @@ def main(argv):
                 logits = model_out.logits
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
                 eval_loss += loss.detach().float()
-                
-            analytics(epoch, "test", eval_loss)
+
+                analytics("test", epoch, step, loss, eval_loss)
             
             saved_model_name = f"trained-e{epoch}-{curr_date}"
-            model.save_pretrained(saved_model_name)
+
+            # Memory-intensive code block
+            unwrapped_model = accelerator.unwrap_model(model)
+            unwrapped_model.save_pretrained(
+                saved_model_name,
+                is_main_process=accelerator.is_main_process,
+                save_function=accelerator.save,
+                state_dict=accelerator.get_state_dict(model)
+            )
 
 
 if __name__ == '__main__':
