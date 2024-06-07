@@ -174,7 +174,7 @@ def main(argv):
                     total_loss += loss_float
                     accelerator.backward(loss)
 
-                    accelerator.log({"training_loss": loss}, step=step)
+                    accelerator.log({f"epoch_{epoch}-training_loss": loss}, step=step)
                     # analytics("train", epoch, step, loss_float, total_loss)
 
                     # Accelerate should handle gradient accumulation automagically
@@ -195,7 +195,7 @@ def main(argv):
                 loss_float = loss.detach().float()
                 eval_loss += loss_float
 
-                accelerator.log({"evaluation_loss": loss}, step=step)
+                accelerator.log({f"epoch_{epoch}-evaluation_loss": loss}, step=step)
                 # analytics("test", epoch, step, loss_float, eval_loss)
             
             saved_model_name = f"{curr_date}-e{epoch}"
