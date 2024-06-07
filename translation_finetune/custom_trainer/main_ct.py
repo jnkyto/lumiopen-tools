@@ -4,6 +4,7 @@
 # Custom training script for fine-tuning
 
 import os
+import gc
 import sys
 import csv
 import torch
@@ -25,7 +26,7 @@ from transformers import (
     AutoModelForCausalLM,
 )
 
-accelerator = Accelerator(gradient_accumulation_steps=4)
+accelerator = Accelerator(gradient_accumulation_steps=4, log_with="tensorboard")
 default_model = 'LumiOpen/Poro-34B'
 curr_date = str(datetime.now().isoformat("T", "minutes")).replace(':', '')
 
@@ -63,7 +64,7 @@ def prepper(translations):
 def main(argv):
     args = argparser().parse_args(argv[1:])
     set_seed(args.seed)     # Set Accelerator randomness seed
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
     ds = ds.shuffle(random.seed(args.seed)).select(range(10000))  # Shuffle dataset and limit sample amount
@@ -198,7 +199,9 @@ def main(argv):
                 state_dict=accelerator.get_state_dict(model)
             )
 
-            accelerator.free_memory()
+            del unwrapped_model
+            gc.collect()
+            torch.cuda.empty_cache()
 
 
 if __name__ == '__main__':
