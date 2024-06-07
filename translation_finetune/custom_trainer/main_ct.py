@@ -161,10 +161,11 @@ def main(argv):
                     model_out = model(**inputs)
                     logits = model_out.logits
                     loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
-                    total_loss += loss.detach().float()
+                    loss_float = loss.detach().float()
+                    total_loss += loss_float
                     accelerator.backward(loss)
 
-                    analytics("train", epoch, step, loss[0].item(), total_loss)
+                    analytics("train", epoch, step, loss_float, total_loss)
 
                     # Accelerate should handle gradient accumulation automagically
                     optimizer.step()
@@ -181,9 +182,10 @@ def main(argv):
                     model_out = model(**inputs)
                 logits = model_out.logits
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
-                eval_loss += loss.detach().float()
+                loss_float = loss.detach().float()
+                eval_loss += loss_float
 
-                analytics("test", epoch, step, loss[0].item(), eval_loss[0].item())
+                analytics("test", epoch, step, loss_float, eval_loss)
             
             saved_model_name = f"{curr_date}-e{epoch}"
 
