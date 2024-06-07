@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # MIT ©2024 Joona Kytöniemi
 
+# Custom training script for fine-tuning
+
 import os
 import sys
 import csv
@@ -115,11 +117,6 @@ def main(argv):
         data_test_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
     )
 
-    if True:
-        for i, entry in enumerate(train_dataloader):
-            if i in range(10):
-                print(entry)
-
     if not args.dry_run:
         # Training arguments
         num_epochs = args.epochs
@@ -155,7 +152,7 @@ def main(argv):
         loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
         for epoch in range(num_epochs):
             model.train()
-            total_loss = 0
+            total_loss = torch.tensor()
 
             for step, batch in enumerate(tqdm(train_dataloader)):
                 with accelerator.accumulate(model):
@@ -167,7 +164,7 @@ def main(argv):
                     total_loss += loss.detach().float()
                     accelerator.backward(loss)
 
-                    analytics("train", epoch, step, loss, total_loss)
+                    analytics("train", epoch, step, loss[0].item(), total_loss)
 
                     # Accelerate should handle gradient accumulation automagically
                     optimizer.step()
@@ -176,7 +173,7 @@ def main(argv):
                     model.zero_grad()
 
             model.eval()
-            eval_loss = 0
+            eval_loss = torch.tensor()
             for step, batch in enumerate(tqdm(test_dataloader)):
                 inputs = batch["input"]
                 outputs = batch["output"]["input_ids"]
@@ -186,9 +183,9 @@ def main(argv):
                 loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
                 eval_loss += loss.detach().float()
 
-                analytics("test", epoch, step, loss, eval_loss)
+                analytics("test", epoch, step, loss[0].item(), eval_loss[0].item())
             
-            saved_model_name = f"trained-e{epoch}-{curr_date}"
+            saved_model_name = f"{curr_date}-e{epoch}"
 
             # Memory-intensive code block
             unwrapped_model = accelerator.unwrap_model(model)
@@ -198,6 +195,8 @@ def main(argv):
                 save_function=accelerator.save,
                 state_dict=accelerator.get_state_dict(model)
             )
+
+            accelerator.free_memory()
 
 
 if __name__ == '__main__':
