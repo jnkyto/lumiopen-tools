@@ -28,7 +28,7 @@ def argparser():
     ap = ArgumentParser()
     ap.add_argument("--key", default="text")
     ap.add_argument("--verbose", action="store_true")
-    ap.add_argument("--max-length", type=int, default=1024)
+    ap.add_argument("--max_length", type=int, default=1024)
     ap.add_argument("--batch_size", "-b", type=int, default=16)
     ap.add_argument("--epochs", "-e", type=int, default=4)
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
