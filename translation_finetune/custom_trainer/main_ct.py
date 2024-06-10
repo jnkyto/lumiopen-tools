@@ -176,11 +176,11 @@ def main(argv):
                     accelerator.backward(loss)
 
                     # Getting gradient norms significantly harms performance!
-                    accelerator.unscale_gradients()
-                    gradient_norm = nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0, norm_type=2)
+                    if accelerator.sync_gradients:
+                        gradient_norm = accelerator.clip_grad_norm_(model.parameters(), max_norm=1.0, norm_type=2)
 
                     # Log stuff from every epoch to its own separate graphs
-                    accelerator.log({f"epoch_{epoch}-gradient_norm": gradient_norm.item()}, step=step)
+                    accelerator.log({f"epoch_{epoch}-gradient_norm": gradient_norm.detach().float()}, step=step)
                     accelerator.log({f"epoch_{epoch}-training_loss": loss}, step=step)
 
                     # Accelerate should run these methods only after the gradient
