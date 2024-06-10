@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # MIT ©2024 Joona Kytöniemi
 
+# Vanilla HF Trainer fine-tuning script.
+# Currently the data loading is broken among other issues so running is discouraged.
+
 import sys
 import torch
 import random
 
 from argparse import ArgumentParser
+from accelerate import Accelerator
 
 from datasets import load_dataset
 from transformers import (
@@ -17,16 +21,20 @@ from transformers import (
 )
 
 DEFAULT_MODEL = 'LumiOpen/Poro-34B'
+accelerator = Accelerator()
 
 
 def argparser():
     ap = ArgumentParser()
-    ap.add_argument('--key', default='text')
-    ap.add_argument('--verbose', action='store_true')
-    ap.add_argument('--max-length', type=int, default=1024)
+    ap.add_argument("--key", default="text")
+    ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--max-length", type=int, default=1024)
     ap.add_argument("--batch_size", "-b", type=int, default=16)
     ap.add_argument("--epochs", "-e", type=int, default=4)
-    ap.add_argument('--model', default=DEFAULT_MODEL)
+    ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
+    ap.add_argument("--seed", "-s", type=int, default=42)
+    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--dry_run", "-d", action="store_true")
     return ap
 
 
@@ -80,56 +88,57 @@ def main(argv):
     # print(f"{type(data_train_tokenized)}: {data_train_tokenized[0]}")
     # print(f"{type(data_test_tokenized)}: {data_test_tokenized[0]}")
 
-    train_args = TrainingArguments(
-        output_dir="train_output",
-        evaluation_strategy="steps",
-        save_strategy="no",
-        eval_steps=100,
-        num_train_epochs=args.epochs,
-        per_device_eval_batch_size=args.batch_size,
-        per_device_train_batch_size=args.batch_size,
-        learning_rate=5e-5,
-        bf16=True,
-        bf16_full_eval=True,
-        gradient_accumulation_steps=1,
-        log_on_each_node=False,
-        log_level="info",
-    )
+    if not args.dry_run:
+        train_args = TrainingArguments(
+            output_dir="train_output",
+            evaluation_strategy="steps",
+            save_strategy="no",
+            eval_steps=100,
+            num_train_epochs=args.epochs,
+            per_device_eval_batch_size=args.batch_size,
+            per_device_train_batch_size=args.batch_size,
+            learning_rate=5e-5,
+            bf16=True,
+            bf16_full_eval=True,
+            gradient_accumulation_steps=1,
+            log_on_each_node=False,
+            log_level="info",
+        )
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16
-    )
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16
+        )
 
-    collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        return_tensors='pt',
-        mlm=False,
-    )
+        collator = DataCollatorForLanguageModeling(
+            tokenizer=tokenizer,
+            return_tensors='pt',
+            mlm=False,
+        )
 
-    trainer = Trainer(
-        args=train_args,
-        model=model,
-        tokenizer=tokenizer,
-        data_collator=collator,
-        train_dataset=data_train_tokenized,
-        eval_dataset=data_test_tokenized,
-    )
+        trainer = accelerator.prepare(Trainer(
+            args=train_args,
+            model=model,
+            tokenizer=tokenizer,
+            data_collator=collator,
+            train_dataset=data_train_tokenized,
+            eval_dataset=data_test_tokenized,
+        ))
 
-    result = trainer.evaluate()
-    print(f'loss before training: {result["eval_loss"]:.2f}')
+        result = trainer.evaluate()
+        print(f'loss before training: {result["eval_loss"]:.2f}')
 
-    trainer.accelerator.wait_for_everyone()
-    trainer.train()
+        trainer.accelerator.wait_for_everyone()
+        trainer.train()
 
-    trainer.accelerator.wait_for_everyone()
-    result = trainer.evaluate()
-    print(f'loss after training: {result["eval_loss"]:.2f}')
+        trainer.accelerator.wait_for_everyone()
+        result = trainer.evaluate()
+        print(f'loss after training: {result["eval_loss"]:.2f}')
 
-    trainer.accelerator.wait_for_everyone()
-    # Save model
-    trainer.save_state()
-    trainer.save_model()
+        trainer.accelerator.wait_for_everyone()
+        # Save model
+        trainer.save_state()
+        trainer.save_model()
 
 
 if __name__ == '__main__':

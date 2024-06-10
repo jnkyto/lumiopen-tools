@@ -67,7 +67,7 @@ def main(argv):
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
-    ds = ds.shuffle(random.seed(args.seed)).select(range(10000))  # Shuffle dataset and limit sample amount
+    ds = ds.shuffle(random.seed(args.seed)).select(range(20000))  # Shuffle dataset and limit sample amount
     ds = ds.train_test_split(test_size=0.2)
 
     # TODO: Make tokenization happen within training process
@@ -105,6 +105,7 @@ def main(argv):
             load_from_cache_file=False,
         ).remove_columns("translation")["samples"]
 
+
     def collate_fn(batch):
         inputs = {key: torch.tensor([item['input'][key] for item in batch]) for key in batch[0]['input'].keys()}
         outputs = {key: torch.tensor([item['output'][key] for item in batch]) for key in batch[0]['output'].keys()}
@@ -122,7 +123,6 @@ def main(argv):
         # Training arguments
         num_epochs = args.epochs
         lr = args.learning_rate
-        gradient_accumulation_steps = 8
 
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
@@ -209,6 +209,7 @@ def main(argv):
                 state_dict=accelerator.get_state_dict(model)
             )
 
+            # Try to free up some memory
             del unwrapped_model
             gc.collect()
             torch.cuda.empty_cache()

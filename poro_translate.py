@@ -24,6 +24,7 @@ TEMPLATES = {
 def argparser():
     ap = ArgumentParser()
     ap.add_argument('--model', default=DEFAULT_MODEL)
+    ap.add_argument("--tokenizer", default=DEFAULT_MODEL)
     ap.add_argument('--fin-to-eng', action='store_true')
     ap.add_argument('file', nargs='?')
     return ap
@@ -56,13 +57,14 @@ def translate(stream, tokenizer, model, args):
 def main(argv):
     args = argparser().parse_args(argv[1:])
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    print("Model loading start.")
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         device_map='auto',
         torch_dtype=torch.bfloat16,
     )
-    print('model loaded.', file=sys.stderr)
+    print('Model loaded.', file=sys.stderr)
     
     if args.file is None:
         translate(sys.stdin, tokenizer, model, args)
