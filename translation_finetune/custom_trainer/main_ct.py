@@ -174,10 +174,16 @@ def main(argv):
                     total_loss += loss_float
                     accelerator.backward(loss)
 
-                    accelerator.log({f"epoch_{epoch}-training_loss": loss}, step=step)
-                    # analytics("train", epoch, step, loss_float, total_loss)
+                    gradient_norm = accelerator.unscale_gradients(
+                        lambda: nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0))
 
-                    # Accelerate should handle gradient accumulation automagically
+                    # Log stuff from every epoch to its own separate graphs
+                    accelerator.log({f"epoch_{epoch}-gradient_norm": gradient_norm}, step=step)
+                    accelerator.log({f"epoch_{epoch}-training_loss": loss}, step=step)
+
+                    # Accelerate should run these methods only after the gradient
+                    # accumulation step amount defined in accelerator init. See:
+                    # https://huggingface.co/docs/accelerate/usage_guides/gradient_accumulation#the-finished-code
                     optimizer.step()
                     lr_scheduler.step()
                     optimizer.zero_grad()
