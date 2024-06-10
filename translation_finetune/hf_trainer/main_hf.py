@@ -33,6 +33,7 @@ def argparser():
     ap.add_argument("--epochs", "-e", type=int, default=4)
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
+    ap.add_argument("--data_length", "-l", type=int, default=8192)
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--dry_run", "-d", action="store_true")
     return ap
@@ -58,7 +59,7 @@ def main(argv):
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
 
-    ds = ds.shuffle(random.seed(args.seed)).select(range(20000))
+    ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))
     ds = ds.train_test_split(test_size=0.2)
 
     def preprocess(dataset):

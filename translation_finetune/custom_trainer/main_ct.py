@@ -40,6 +40,7 @@ def argparser():
     ap.add_argument("--epochs", "-e", type=int, default=2)
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
+    ap.add_argument("--data_length", "-l", type=int, default=8192)
     ap.add_argument('--model', default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
     return ap
@@ -67,7 +68,7 @@ def main(argv):
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
-    ds = ds.shuffle(random.seed(args.seed)).select(range(20000))  # Shuffle dataset and limit sample amount
+    ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))  # Shuffle dataset and limit sample amount
     ds = ds.train_test_split(test_size=0.2)
 
     # TODO: Make tokenization happen within training process
