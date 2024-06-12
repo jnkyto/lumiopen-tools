@@ -69,11 +69,6 @@ def main(argv):
     set_seed(args.seed)  # Set Accelerator randomness seed
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
 
-    ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train",
-                      download_mode=DownloadMode.FORCE_REDOWNLOAD)
-    ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))  # Shuffle dataset and limit sample amount
-    ds = ds.train_test_split(test_size=0.2)
-
     # TODO: Make tokenization happen within training process
     def tokenize(translations):
         for idx, entry in enumerate(translations["samples"]):
@@ -98,6 +93,12 @@ def main(argv):
         return tokenized_translations
 
     with accelerator.main_process_first():
+        ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train",
+                          download_mode=DownloadMode.FORCE_REDOWNLOAD)
+        ds = ds.shuffle(random.seed(args.seed)).select(
+            range(args.data_length))  # Shuffle dataset and limit sample amount
+        ds = ds.train_test_split(test_size=0.2)
+
         data_train_tokenized = ds["train"].map(
             preprocess,
             batched=True,
