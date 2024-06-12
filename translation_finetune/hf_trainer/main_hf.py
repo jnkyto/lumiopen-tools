@@ -10,8 +10,9 @@ import random
 
 from argparse import ArgumentParser
 from accelerate import Accelerator
+from accelerate.utils import set_seed
 
-from datasets import load_dataset, Dataset
+from datasets import load_dataset, Dataset, DownloadMode
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -41,8 +42,10 @@ def argparser():
 
 def main(argv):
     args = argparser().parse_args(argv[1:])
+    set_seed(args.seed)
 
-    ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
+    ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train",
+                      download_mode=DownloadMode.FORCE_REDOWNLOAD)  # hopefully fixes cache issues
 
     ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))
     ds = ds.train_test_split(test_size=0.2)

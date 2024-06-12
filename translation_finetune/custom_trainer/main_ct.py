@@ -20,7 +20,7 @@ from transformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 from datetime import datetime
 
-from datasets import load_dataset
+from datasets import load_dataset, DownloadMode
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -69,7 +69,8 @@ def main(argv):
     set_seed(args.seed)  # Set Accelerator randomness seed
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
 
-    ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
+    ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train",
+                      download_mode=DownloadMode.FORCE_REDOWNLOAD)
     ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))  # Shuffle dataset and limit sample amount
     ds = ds.train_test_split(test_size=0.2)
 
