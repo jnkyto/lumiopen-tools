@@ -93,8 +93,7 @@ def main(argv):
         return tokenized_translations
 
     with accelerator.main_process_first():
-        ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train",
-                          download_mode=DownloadMode.FORCE_REDOWNLOAD)
+        ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
         ds = ds.shuffle(random.seed(args.seed)).select(
             range(args.data_length))  # Shuffle dataset and limit sample amount
         ds = ds.train_test_split(test_size=0.2)
