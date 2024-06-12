@@ -179,7 +179,7 @@ def main(argv):
                     # Getting gradient norms significantly harms performance!
                     if accelerator.sync_gradients and args.log_gradients:
                         gradient_norm = accelerator.clip_grad_norm_(model.parameters(), max_norm=1.0, norm_type=2)
-                        if type(gradient_norm) is not "None":
+                        if type(gradient_norm) is not None:
                             accelerator.log({f"epoch_{epoch}-gradient_norm": gradient_norm.detach().float()},
                                             step=step)
 
@@ -216,7 +216,8 @@ def main(argv):
                 saved_model_name,
                 is_main_process=accelerator.is_main_process,
                 save_function=accelerator.save,
-                state_dict=accelerator.get_state_dict(model)
+                state_dict=accelerator.get_state_dict(model),
+                safe_serialization=False,
             )
 
             # Try to free up some memory
