@@ -31,6 +31,7 @@ accelerator = Accelerator(gradient_accumulation_steps=4, log_with="tensorboard",
 default_model = 'LumiOpen/Poro-34B'
 curr_date = str(datetime.now().isoformat("T", "minutes")).replace(':', '')
 
+
 def argparser():
     ap = ArgumentParser()
     ap.add_argument('--key', default='text')
@@ -42,6 +43,7 @@ def argparser():
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
     ap.add_argument('--model', default=default_model)
+    ap.add_argument("--log_gradients", action="store_true")
     ap.add_argument("--dry_run", "-d", action="store_true")
     return ap
 
@@ -64,7 +66,7 @@ def prepper(translations):
 
 def main(argv):
     args = argparser().parse_args(argv[1:])
-    set_seed(args.seed)     # Set Accelerator randomness seed
+    set_seed(args.seed)  # Set Accelerator randomness seed
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
 
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")  # With europarl, everything's in "train"
@@ -105,7 +107,6 @@ def main(argv):
             batched=True,
             load_from_cache_file=False,
         ).remove_columns("translation")["samples"]
-
 
     def collate_fn(batch):
         inputs = {key: torch.tensor([item['input'][key] for item in batch]) for key in batch[0]['input'].keys()}
@@ -176,9 +177,11 @@ def main(argv):
                     accelerator.backward(loss)
 
                     # Getting gradient norms significantly harms performance!
-                    if accelerator.sync_gradients:
+                    if accelerator.sync_gradients and args.log_gradients:
                         gradient_norm = accelerator.clip_grad_norm_(model.parameters(), max_norm=1.0, norm_type=2)
-                        accelerator.log({f"epoch_{epoch}-gradient_norm": gradient_norm.detach().float()}, step=step)
+                        if type(gradient_norm) is not "None":
+                            accelerator.log({f"epoch_{epoch}-gradient_norm": gradient_norm.detach().float()},
+                                            step=step)
 
                     accelerator.log({f"epoch_{epoch}-training_loss": loss}, step=step)
 
@@ -204,7 +207,7 @@ def main(argv):
 
                 accelerator.log({f"epoch_{epoch}-evaluation_loss": loss}, step=step)
                 # analytics("test", epoch, step, loss_float, eval_loss)
-            
+
             saved_model_name = f"{curr_date}-e{epoch}"
 
             # Memory-intensive code block

@@ -39,21 +39,6 @@ def argparser():
     return ap
 
 
-def prepper(dataset):
-    template = "<|user|>Käännä suomeksi: {} <|assistant|>"
-    formatted_data = []
-
-    for idx, entry in enumerate(dataset["translation"]):
-        processed_entry = {
-            "input": template.format(entry["en"]),
-            "output": entry["fi"]
-        }
-        formatted_data.append(processed_entry)
-
-    new_ds = Dataset.from_list(formatted_data)
-    return new_ds
-
-
 def main(argv):
     args = argparser().parse_args(argv[1:])
 
@@ -62,18 +47,32 @@ def main(argv):
     ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))
     ds = ds.train_test_split(test_size=0.2)
 
-    def preprocess(dataset):
-        prepped = prepper(dataset)
-        return prepped
+    def prepper(dataset):
+        template = "<|user|>Käännä suomeksi: {} <|assistant|>"
+        formatted_data = []
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+        for idx, entry in enumerate(dataset["translation"]):
+            processed_entry = {
+                "input": template.format(entry["en"]),
+                "output": entry["fi"]
+            }
+            formatted_data.append(processed_entry)
+
+        new_ds = Dataset.from_list(formatted_data)
+        return new_ds
 
     def tokenize(example):
-        return tokenizer(
-            example,
-            max_length=args.max_length,
-            truncation=True,
-        )
+        inputs = tokenizer(example["input"], truncation=True, max_length=args.max_length)
+        outputs = tokenizer(example["output"], truncation=True, max_length=args.max_length)
+        inputs["labels"] = outputs["input_ids"]
+        return inputs
+
+    def preprocess(dataset):
+        formatted_set = prepper(dataset)
+        tokenized_set = formatted_set.map(tokenize, batched=True).remove_columns(["input", "output"])
+        return tokenized_set
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     with accelerator.main_process_first():
         dataset_train = preprocess(ds["train"])
