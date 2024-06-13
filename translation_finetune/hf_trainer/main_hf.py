@@ -134,6 +134,7 @@ def main(argv):
                 state_dict=trainer.accelerator.get_state_dict(model),
                 safe_serialization=False
             )
+            print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")
 
         trainer.accelerator.end_training()
 
