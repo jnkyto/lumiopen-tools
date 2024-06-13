@@ -131,7 +131,7 @@ def main(argv):
             unwrapped_model.save_pretrained(
                 saved_model_name,
                 save_function=trainer.accelerator.save,
-                state_dict=trainer.accelerator.get_state_dict(model),
+                state_dict=trainer.accelerator.get_state_dict(trainer.deepspeed),
                 safe_serialization=False
             )
             print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")
