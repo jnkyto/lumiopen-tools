@@ -7,12 +7,13 @@
 import sys
 import torch
 import random
+import string
 
+from datetime import datetime
 from argparse import ArgumentParser
-from accelerate import Accelerator
 from accelerate.utils import set_seed
 
-from datasets import load_dataset, Dataset, DownloadMode
+from datasets import load_dataset, Dataset
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -21,8 +22,9 @@ from transformers import (
     Trainer,
 )
 
-DEFAULT_MODEL = 'LumiOpen/Poro-34B'
-accelerator = Accelerator()
+default_model = 'LumiOpen/Poro-34B'
+curr_date = str(datetime.now().isoformat("T", "minutes")).replace(':', '')
+saved_model_dir = "./output"    # without trailing forward-slash
 
 
 def argparser():
@@ -35,7 +37,7 @@ def argparser():
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
-    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--model", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
     return ap
 
@@ -76,9 +78,8 @@ def main(argv):
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
 
-    with accelerator.main_process_first():
-        dataset_train = preprocess(ds["train"])
-        dataset_test = preprocess(ds["test"])
+    dataset_train = preprocess(ds["train"])
+    dataset_test = preprocess(ds["test"])
 
     if not args.dry_run:
         train_args = TrainingArguments(
@@ -117,20 +118,24 @@ def main(argv):
             eval_dataset=dataset_test,
         )
 
-        model, trainer = accelerator.prepare(model, trainer)
-
-        result = trainer.evaluate()
-        print(f'loss before training: {result["eval_loss"]:.2f}')
+        trainer.accelerator.print(f"{trainer.model}")
 
         trainer.accelerator.wait_for_everyone()
         trainer.train()
 
-        result = trainer.evaluate()
-        print(f'loss after training: {result["eval_loss"]:.2f}')
+        trainer.accelerator.wait_for_everyone()
+        if trainer.accelerator.is_main_process():
+            salt = ''.join(random.choices(string.ascii_letters, k=4))
+            saved_model_name = f"{curr_date}-{salt}"
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
+            unwrapped_model.save_pretrained(
+                saved_model_name,
+                save_function=trainer.accelerator.save,
+                state_dict=trainer.accelerator.get_state_dict(model),
+                safe_serialization=False
+            )
 
-        # Save model
-        trainer.save_state()
-        trainer.save_model()
+        trainer.accelerator.end_training()
 
 
 if __name__ == '__main__':
