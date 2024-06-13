@@ -20,10 +20,11 @@ from transformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 from datetime import datetime
 
-from datasets import load_dataset, DownloadMode
+from datasets import load_dataset, Dataset
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
+    DataCollatorForLanguageModeling
 )
 
 proj_conf = ProjectConfiguration(project_dir='.', logging_dir='./analytics')
@@ -48,22 +49,6 @@ def argparser():
     return ap
 
 
-def prepper(translations):
-    template = "<|user|>Käännä suomeksi: {} <|assistant|>"
-
-    new_ds_data = {"samples": []}
-
-    for idx, entry in enumerate(translations["translation"]):
-        entry["en"] = template.format(entry["en"])
-        processed_entry = {
-            "input": entry['en'],
-            "output": entry['fi']
-        }
-        new_ds_data["samples"].append(processed_entry)
-
-    return new_ds_data
-
-
 def main(argv):
     args = argparser().parse_args(argv[1:])
     set_seed(args.seed)  # Set Accelerator randomness seed
@@ -74,53 +59,52 @@ def main(argv):
         range(args.data_length))  # Shuffle dataset and limit sample amount
     ds = ds.train_test_split(test_size=0.2)
 
-    # TODO: Make tokenization happen within training process
-    def tokenize(translations):
-        for idx, entry in enumerate(translations["samples"]):
-            translations["samples"][idx]["input"] = tokenizer(
-                entry["input"],
-                max_length=args.max_length,
-                padding="max_length",
-                truncation=True
-            )
-            translations["samples"][idx]["output"] = tokenizer(
-                entry["output"],
-                max_length=args.max_length,
-                padding="max_length",
-                truncation=True
-            )
+    def prepper(dataset):
+        template = "<|user|>Käännä suomeksi: {} <|assistant|>"
+        formatted_data = []
 
-        return translations
+        for idx, entry in enumerate(dataset["translation"]):
+            processed_entry = {
+                "input": template.format(entry["en"]),
+                "output": entry["fi"]
+            }
+            formatted_data.append(processed_entry)
 
-    def preprocess(translations):
-        prepped_translations = prepper(translations)
-        tokenized_translations = tokenize(prepped_translations)
-        return tokenized_translations
+        new_ds = Dataset.from_list(formatted_data)
+        return new_ds
 
-    with accelerator.main_process_first():
-        data_train_tokenized = ds["train"].map(
-            preprocess,
-            batched=True,
-            load_from_cache_file=False,
-        ).remove_columns("translation")["samples"]
-        data_test_tokenized = ds["test"].map(
-            preprocess,
-            batched=True,
-            load_from_cache_file=False,
-        ).remove_columns("translation")["samples"]
+    def tokenize(example):
+        inputs = tokenizer(example["input"], truncation=True, max_length=args.max_length, padding="max_length")
+        outputs = tokenizer(example["output"], truncation=True, max_length=args.max_length, padding="max_length")
+        inputs["labels"] = outputs["input_ids"]
+        return inputs
 
-    def collate_fn(batch):
-        inputs = {key: torch.tensor([item['input'][key] for item in batch]) for key in batch[0]['input'].keys()}
-        outputs = {key: torch.tensor([item['output'][key] for item in batch]) for key in batch[0]['output'].keys()}
-        return {"input": inputs, "output": outputs}
+    def preprocess(dataset):
+        formatted_set = prepper(dataset)
+        tokenized_set = formatted_set.map(tokenize, batched=True).remove_columns(["input", "output"])
+        return tokenized_set
+
+    dataset_train = preprocess(ds["train"])
+    dataset_test = preprocess(ds["test"])
+
+    collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        return_tensors='pt',
+        mlm=False,
+    )
 
     train_dataloader = DataLoader(
-        data_train_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
+        dataset_train, collate_fn=collator, batch_size=args.batch_size, pin_memory=True
     )
 
     test_dataloader = DataLoader(
-        data_test_tokenized, collate_fn=collate_fn, batch_size=args.batch_size, pin_memory=True
+        dataset_test, collate_fn=collator, batch_size=args.batch_size, pin_memory=True
     )
+
+    for i, entry in enumerate(train_dataloader):
+        if i >= 1:
+            break
+        print(f"{entry["input_ids"]}\n{entry["attention_mask"]}\n{entry["labels"]}")
 
     if not args.dry_run:
         # Training arguments
@@ -168,8 +152,8 @@ def main(argv):
 
             for step, batch in enumerate(tqdm(train_dataloader)):
                 with accelerator.accumulate(model):
-                    inputs = batch["input"]
-                    outputs = batch["output"]["input_ids"]
+                    inputs = batch
+                    outputs = batch["labels"]
                     model_out = model(**inputs)
                     logits = model_out.logits
                     loss = loss_fn(logits.view(-1, logits.size(-1)), outputs.view(-1))
@@ -197,8 +181,8 @@ def main(argv):
             model.eval()
             eval_loss = 0
             for step, batch in enumerate(tqdm(test_dataloader)):
-                inputs = batch["input"]
-                outputs = batch["output"]["input_ids"]
+                inputs = batch
+                outputs = batch["labels"]
                 with torch.no_grad():
                     model_out = model(**inputs)
                 logits = model_out.logits

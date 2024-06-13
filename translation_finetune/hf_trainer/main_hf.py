@@ -124,7 +124,7 @@ def main(argv):
         trainer.train()
 
         trainer.accelerator.wait_for_everyone()
-        if trainer.accelerator.is_main_process():
+        if trainer.accelerator.is_main_process:
             salt = ''.join(random.choices(string.ascii_letters, k=4))
             saved_model_name = f"{curr_date}-{salt}"
             unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
