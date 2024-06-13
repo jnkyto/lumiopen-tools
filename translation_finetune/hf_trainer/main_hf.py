@@ -66,8 +66,8 @@ def main(argv):
         return new_ds
 
     def tokenize(example):
-        inputs = tokenizer(example["input"], truncation=True, max_length=args.max_length, padding="longest")
-        outputs = tokenizer(example["output"], truncation=True, max_length=args.max_length, padding="longest")
+        inputs = tokenizer(example["input"], truncation=True, max_length=args.max_length, padding="max_length")
+        outputs = tokenizer(example["output"], truncation=True, max_length=args.max_length, padding="max_length")
         inputs["labels"] = outputs["input_ids"]
         return inputs
 
