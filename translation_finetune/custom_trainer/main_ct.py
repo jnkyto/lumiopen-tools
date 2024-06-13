@@ -101,11 +101,6 @@ def main(argv):
         dataset_test, collate_fn=collator, batch_size=args.batch_size, pin_memory=True
     )
 
-    for i, entry in enumerate(train_dataloader):
-        if i >= 1:
-            break
-        print(f"{entry["input_ids"]}\n{entry["attention_mask"]}\n{entry["labels"]}")
-
     if not args.dry_run:
         # Training arguments
         num_epochs = args.epochs
