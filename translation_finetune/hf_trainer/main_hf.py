@@ -136,8 +136,6 @@ def main(argv):
             )
             print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")
 
-        trainer.accelerator.end_training()
-
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
