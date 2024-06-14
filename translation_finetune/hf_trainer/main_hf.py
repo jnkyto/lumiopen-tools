@@ -122,16 +122,23 @@ def main(argv):
         trainer.accelerator.wait_for_everyone()
         trainer.train()
 
+        trainer.accelerator.wait_for_everyone()
+        if getattr(trainer, "deepspeed"):
+            state_dict = trainer.accelerator.get_state_dict(trainer.deepspeed)
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
+        else:
+            state_dict = trainer.accelerator.get_state_dict(trainer.model)
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.model)
+
         if trainer.accelerator.is_main_process:
             saved_model_name = f"{curr_date}"
-            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
             unwrapped_model.save_pretrained(
                 saved_model_name,
-                save_function=trainer.accelerator.save,
-                state_dict=trainer.accelerator.get_state_dict(trainer.deepspeed),
+                state_dict=state_dict,
                 safe_serialization=False
             )
             print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")
+        trainer.accelerator.wait_for_everyone()
 
 
 if __name__ == '__main__':
