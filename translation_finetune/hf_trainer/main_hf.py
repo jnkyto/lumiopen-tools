@@ -4,9 +4,7 @@
 # Vanilla HF Trainer fine-tuning script.
 
 import sys
-import torch
 import random
-import string
 
 from datetime import datetime
 from argparse import ArgumentParser
@@ -38,6 +36,7 @@ def argparser():
     ap.add_argument("--data_length", type=int, default=8192)
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
+    ap.add_argument("--safetensors", action="store_true")
     return ap
 
 
@@ -133,9 +132,9 @@ def main(argv):
         if trainer.accelerator.is_main_process:
             saved_model_name = f"{curr_date}"
             unwrapped_model.save_pretrained(
-                saved_model_name,
+                f"{saved_model_dir}/{saved_model_name}",
                 state_dict=state_dict,
-                safe_serialization=False
+                safe_serialization=args.safetensors
             )
             print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")
         trainer.accelerator.wait_for_everyone()
