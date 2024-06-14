@@ -2,7 +2,6 @@
 # MIT ©2024 Joona Kytöniemi
 
 # Vanilla HF Trainer fine-tuning script.
-# Currently the data loading is broken among other issues so running is discouraged.
 
 import sys
 import torch
@@ -123,15 +122,13 @@ def main(argv):
         trainer.accelerator.wait_for_everyone()
         trainer.train()
 
-        trainer.accelerator.wait_for_everyone()
         if trainer.accelerator.is_main_process:
-            salt = ''.join(random.choices(string.ascii_letters, k=4))
-            saved_model_name = f"{curr_date}-{salt}"
-            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
+            saved_model_name = f"{curr_date}"
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.model)
             unwrapped_model.save_pretrained(
                 saved_model_name,
                 save_function=trainer.accelerator.save,
-                state_dict=trainer.accelerator.get_state_dict(trainer.deepspeed),
+                state_dict=trainer.accelerator.get_state_dict(trainer.model),
                 safe_serialization=False
             )
             print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")

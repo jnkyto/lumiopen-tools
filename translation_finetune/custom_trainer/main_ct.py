@@ -122,17 +122,6 @@ def main(argv):
             model, train_dataloader, test_dataloader, optimizer, lr_scheduler
         )
 
-        # These analytic functions are currently unused in favor of TensorBoard
-        def append_to_csv(filename, row):
-            exists = os.path.isfile(filename)
-            with open(filename, 'a' if exists else 'w', newline='', encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(row)
-
-        def analytics(split, epoch, step, loss, total_loss):
-            filename = f"./analytics/{curr_date}-e{epoch}_analytics.csv"
-            append_to_csv(filename=filename, row=[split, epoch, step, loss, total_loss])
-
         loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
         accelerator.init_trackers(
             project_name=f"fine-tune_{curr_date}",
