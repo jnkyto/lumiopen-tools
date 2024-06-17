@@ -3,6 +3,7 @@
 
 # Vanilla HF Trainer fine-tuning script.
 
+import os
 import sys
 import random
 
@@ -34,7 +35,9 @@ def argparser():
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
+    ap.add_argument("--gradient_steps", type=int, default=4)
     ap.add_argument("--model", default=default_model)
+    ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
     ap.add_argument("--safetensors", action="store_true")
     return ap
@@ -44,6 +47,8 @@ def main(argv):
     args = argparser().parse_args(argv[1:])
     set_seed(args.seed)
 
+    # TODO: Ability to load dataset from .jsonl's?
+    # Have to change preprocessing logic as well.
     ds = load_dataset("Helsinki-NLP/europarl", "en-fi", split="train")
 
     ds = ds.shuffle(random.seed(args.seed)).select(range(args.data_length))
@@ -71,15 +76,23 @@ def main(argv):
 
     def preprocess(dataset):
         formatted_set = prepper(dataset)
+        # print(formatted_set[0])
         tokenized_set = formatted_set.map(tokenize, batched=True).remove_columns(["input", "output"])
         return tokenized_set
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
 
     dataset_train = preprocess(ds["train"])
     dataset_test = preprocess(ds["test"])
 
+    # print(dataset_train[0])
+    # print(dataset_test[0])
+
+    # Create model output directory if it doesn't exist
     if not args.dry_run:
+        if not os.path.exists(saved_model_dir):
+            os.makedirs(saved_model_dir)
+
         train_args = TrainingArguments(
             output_dir="train_output",
             evaluation_strategy="steps",
@@ -91,7 +104,7 @@ def main(argv):
             learning_rate=args.learning_rate,
             bf16=True,
             bf16_full_eval=True,
-            gradient_accumulation_steps=4,
+            gradient_accumulation_steps=args.gradient_steps,
             log_on_each_node=False,
             log_level="info",
         )
@@ -116,19 +129,24 @@ def main(argv):
             eval_dataset=dataset_test,
         )
 
-        trainer.accelerator.print(f"{trainer.deepspeed}")
+        is_deepspeed = getattr(trainer, "deepspeed")
+        trainer.accelerator.print(f"{trainer.deepspeed}") if is_deepspeed \
+            else trainer.accelerator.print(f"{trainer.model}")
 
+        # Torch barrier before training start
         trainer.accelerator.wait_for_everyone()
         trainer.train()
 
+        # Torch barrier before unwrap
         trainer.accelerator.wait_for_everyone()
-        if getattr(trainer, "deepspeed"):
+        if is_deepspeed:
             state_dict = trainer.accelerator.get_state_dict(trainer.deepspeed)
             unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
         else:
             state_dict = trainer.accelerator.get_state_dict(trainer.model)
             unwrapped_model = trainer.accelerator.unwrap_model(trainer.model)
 
+        # Save model only in main process and make other processes wait with torch barrier
         if trainer.accelerator.is_main_process:
             saved_model_name = f"{curr_date}"
             unwrapped_model.save_pretrained(
