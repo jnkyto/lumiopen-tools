@@ -137,17 +137,13 @@ def main(argv):
         trainer.accelerator.wait_for_everyone()
         trainer.train()
 
-        # Torch barrier before unwrap
+        # Torch barrier before unwrap and save
         trainer.accelerator.wait_for_everyone()
         
         # Save model only in main process and make other processes wait with torch barrier
         if trainer.accelerator.is_main_process:
-            if is_deepspeed:
-                state_dict = trainer.accelerator.get_state_dict(trainer.deepspeed)
-                unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
-            else:
-                state_dict = trainer.accelerator.get_state_dict(trainer.model)
-                unwrapped_model = trainer.accelerator.unwrap_model(trainer.model)
+            state_dict = trainer.accelerator.get_state_dict(trainer.deepspeed)
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
             
             saved_model_name = f"{curr_date}"
             unwrapped_model.save_pretrained(
