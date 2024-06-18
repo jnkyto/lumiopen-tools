@@ -23,7 +23,7 @@ def main(per: int, bands: int, thold: float, minwords: int):
     :param per: The amount of samples taken around one single band.
     :param bands: The amount of examination points where samples should be taken, i.e. resolution.
     :param thold: The amount of variation (percentage).
-    :param minwords: Minimum string length for samples
+    :param minwords: Minimum amount of words for samples
     :return: Sampled dataset data
     """
 

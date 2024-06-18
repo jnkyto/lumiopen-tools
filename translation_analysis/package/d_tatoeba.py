@@ -15,6 +15,15 @@ DATASET_PATH = f"{DATA_PATH}/tatoeba/tatoeba-test-v2023-09-26.eng-fin.txt"
 
 
 def main(per: int, bands: int, thold: float, minwords: int):
+    """
+    Handler script for Tatoeba.
+
+    :param per: The amount of samples taken around one single band.
+    :param bands: The amount of examination points where samples should be taken, i.e. resolution.
+    :param thold: The amount of variation (percentage).
+    :param minwords: Minimum amount of words for samples
+    :return: Sampled dataset data
+    """
     if not os.path.isfile(DATASET_PATH):
         logging.error("Tatoeba dataset file could not be found. Program will now exit.")
         sys.exit(1)

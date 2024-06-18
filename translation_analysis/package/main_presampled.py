@@ -22,7 +22,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 def argparser():
     ap = ArgumentParser()
     ap.add_argument("file", type=argparse.FileType('r'))
-    ap.add_argument("-m", "--model", default=DEFAULT_MODEL)
+    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--tokenizer", default=DEFAULT_MODEL)
     return ap
 
 
@@ -34,7 +35,7 @@ def main(argv):
     # eughhh
     dataset_name = args.file.name.split('/')[-1].split('_')[0]
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         device_map="auto",
