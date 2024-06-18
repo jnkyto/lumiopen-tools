@@ -2,6 +2,7 @@
 # MIT ©2024 Joona Kytöniemi
 
 # Custom training script for fine-tuning
+# Currently causes unknown GPU memory errors, possibly caused by some bug during data loading.
 
 import gc
 import sys
