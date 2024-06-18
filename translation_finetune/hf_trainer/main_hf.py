@@ -129,9 +129,7 @@ def main(argv):
             eval_dataset=dataset_test,
         )
 
-        is_deepspeed = getattr(trainer, "deepspeed")
-        trainer.accelerator.print(f"{trainer.deepspeed}") if is_deepspeed \
-            else trainer.accelerator.print(f"{trainer.model}")
+        trainer.accelerator.print(f"{trainer.deepspeed}")
 
         # Torch barrier before training start
         trainer.accelerator.wait_for_everyone()
@@ -139,12 +137,15 @@ def main(argv):
 
         # Torch barrier before unwrap and save
         trainer.accelerator.wait_for_everyone()
+        if getattr(trainer, "deepspeed"):
+            state_dict = trainer.accelerator.get_state_dict(trainer.deepspeed)
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
+        else:
+            state_dict = trainer.accelerator.get_state_dict(trainer.model)
+            unwrapped_model = trainer.accelerator.unwrap_model(trainer.model)
         
         # Save model only in main process and make other processes wait with torch barrier
         if trainer.accelerator.is_main_process:
-            state_dict = trainer.accelerator.get_state_dict(trainer.deepspeed)
-            unwrapped_model = trainer.accelerator.unwrap_model(trainer.deepspeed)
-            
             saved_model_name = f"{curr_date}"
             unwrapped_model.save_pretrained(
                 f"{saved_model_dir}/{saved_model_name}",
