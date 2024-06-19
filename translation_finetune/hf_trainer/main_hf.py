@@ -36,6 +36,7 @@ def argparser():
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
     ap.add_argument("--gradient_steps", type=int, default=4)
+    ap.add_argument("--checkpoints", action="store_true")
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
@@ -95,16 +96,26 @@ def main(argv):
 
         train_args = TrainingArguments(
             output_dir="train_output",
+            warmup_steps=50,
+            logging_steps=100,
+
+            eval_steps=200,
             evaluation_strategy="steps",
-            save_strategy="no",
-            eval_steps=100,
+
+            save_strategy="steps" if args.checkpoints else "no",
+            save_steps=500,
+            save_total_limit=3,
+
+            gradient_accumulation_steps=args.gradient_steps,
+            gradient_checkpointing=True,
             num_train_epochs=args.epochs,
             per_device_eval_batch_size=args.batch_size,
             per_device_train_batch_size=args.batch_size,
             learning_rate=args.learning_rate,
+
+            lr_scheduler_type="constant_with_warmup",
             bf16=True,
             bf16_full_eval=True,
-            gradient_accumulation_steps=args.gradient_steps,
             log_on_each_node=False,
             log_level="info",
         )
@@ -113,6 +124,8 @@ def main(argv):
             args.model,
             torch_dtype="auto"
         )
+
+        model.gradient_checkpointing_enable()
 
         collator = DataCollatorForLanguageModeling(
             tokenizer=tokenizer,
