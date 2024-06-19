@@ -6,7 +6,6 @@ import json
 import argparse
 
 data_path = "../../data/merge"
-curr_file = "elrc-fi-info"
 
 
 def argparser():
@@ -24,11 +23,13 @@ def main(argv):
     with open(args.translated_file) as file:
         transd = json.load(file)
 
+    df_name = args.sampled_file.split('/')[-1].split('_')[0]
+
     for i, band in enumerate(sampled):
         for j, entry in enumerate(band["entries"]):
             sampled[i]["entries"][j].append(transd[i]["entries"][j])
 
-    with open(f"{data_path}/{curr_file}_merged_entries.json", "w+") as file:
+    with open(f"{data_path}/{df_name}_merged_entries.json", "w+") as file:
         json.dump(sampled, file, ensure_ascii=False)
 
     print("Files merged successfully.")

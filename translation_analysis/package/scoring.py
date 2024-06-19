@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # MIT ©2024 Joona Kytöniemi
 
+import gc
 import sys
 import sacrebleu
 import json
@@ -47,6 +48,8 @@ for k, data in enumerate(data_array):
         band_avg = sum(band_scores) / len(band_scores)
         band_avgs.append((band_avg, band["median_len"]))
         print(f"-> Band {band["band_no"]} avg BLEU: {band_avg}.")
+        del band_scores
+        gc.collect()
     band_avgs_list.append(band_avgs)
 
 for n, path in enumerate(path_list):
