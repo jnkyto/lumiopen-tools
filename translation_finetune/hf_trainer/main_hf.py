@@ -104,11 +104,11 @@ def main(argv):
             evaluation_strategy="steps",
 
             save_strategy="steps" if type(args.save_steps) is not None else "no",
-            save_steps=args.save_steps,
+            save_steps=args.save_steps if type(args.save_steps) is not None else 0,
             save_total_limit=3,
 
             gradient_checkpointing=True if type(args.gradient_steps) is not None else False,
-            gradient_accumulation_steps=args.gradient_steps,
+            gradient_accumulation_steps=args.gradient_steps if type(args.gradient_steps) is not None else 0,
 
             num_train_epochs=args.epochs,
             per_device_eval_batch_size=args.batch_size,
