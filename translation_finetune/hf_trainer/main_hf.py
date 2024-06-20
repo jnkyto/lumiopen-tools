@@ -22,7 +22,7 @@ from transformers import (
 
 default_model = 'LumiOpen/Poro-34B'
 curr_date = str(datetime.now().isoformat("T", "minutes")).replace(':', '')
-saved_model_dir = "./output"    # without trailing forward-slash
+saved_model_dir = "./output"  # without trailing forward-slash
 
 
 def argparser():
@@ -36,7 +36,7 @@ def argparser():
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
     ap.add_argument("--gradient_steps", type=int, default=4)
-    ap.add_argument("--checkpoints", action="store_true")
+    ap.add_argument("--save_steps", type=int)  # default intentionally omitted
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
@@ -102,8 +102,8 @@ def main(argv):
             eval_steps=200,
             evaluation_strategy="steps",
 
-            save_strategy="steps" if args.checkpoints else "no",
-            save_steps=500,
+            save_strategy="steps" if type(args.save_steps) is not None else "no",
+            save_steps=args.save_steps,
             save_total_limit=3,
 
             gradient_accumulation_steps=args.gradient_steps,
@@ -156,7 +156,7 @@ def main(argv):
         else:
             state_dict = trainer.accelerator.get_state_dict(trainer.model)
             unwrapped_model = trainer.accelerator.unwrap_model(trainer.model)
-        
+
         # Save model only in main process and make other processes wait with torch barrier
         if trainer.accelerator.is_main_process:
             saved_model_name = f"{curr_date}"
