@@ -35,8 +35,8 @@ def argparser():
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
-    ap.add_argument("--gradient_steps", type=int)   # defaults intentionally omitted
-    ap.add_argument("--save_steps", type=int)
+    ap.add_argument("--gradient_steps", type=int)
+    ap.add_argument("--save_steps", type=int)   # checkpoints don't work for now
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
