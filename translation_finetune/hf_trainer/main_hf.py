@@ -36,8 +36,8 @@ def argparser():
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
-    ap.add_argument("--gradient_steps", type=int)
-    ap.add_argument("--save_steps", type=int)   # checkpoints don't work for now, please don't use
+    ap.add_argument("--gradient_steps", type=int, default=0)
+    ap.add_argument("--save_steps", type=int, default=0)   # checkpoints don't work for now
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
@@ -103,12 +103,12 @@ def main(argv):
             eval_steps=200,
             evaluation_strategy="steps",
 
-            save_strategy="steps" if type(args.save_steps) is not None else "no",
-            save_steps=args.save_steps if type(args.save_steps) is not None else 0,
+            save_strategy="steps" if args.save_steps != 0 else "no",
+            save_steps=args.save_steps,
             save_total_limit=3,
 
-            gradient_checkpointing=True if type(args.gradient_steps) is not None else False,
-            gradient_accumulation_steps=args.gradient_steps if type(args.gradient_steps) is not None else 0,
+            gradient_checkpointing=True if args.gradient_steps != 0 else False,
+            gradient_accumulation_steps=args.gradient_steps,
 
             num_train_epochs=args.epochs,
             per_device_eval_batch_size=args.batch_size,
