@@ -35,8 +35,8 @@ def argparser():
     ap.add_argument("--learning_rate", "-r", type=float, default=5e-5)
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
-    ap.add_argument("--gradient_steps", type=int, default=4)
-    ap.add_argument("--save_steps", type=int)  # default intentionally omitted
+    ap.add_argument("--gradient_steps", type=int)   # defaults intentionally omitted
+    ap.add_argument("--save_steps", type=int)
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
@@ -96,7 +96,7 @@ def main(argv):
 
         train_args = TrainingArguments(
             output_dir="train_output",
-            warmup_steps=50,
+            warmup_steps=10,
             logging_steps=100,
 
             eval_steps=200,
@@ -106,8 +106,9 @@ def main(argv):
             save_steps=args.save_steps,
             save_total_limit=3,
 
+            gradient_checkpointing=True if type(args.gradient_steps) is not None else False,
             gradient_accumulation_steps=args.gradient_steps,
-            gradient_checkpointing=True,
+
             num_train_epochs=args.epochs,
             per_device_eval_batch_size=args.batch_size,
             per_device_train_batch_size=args.batch_size,
