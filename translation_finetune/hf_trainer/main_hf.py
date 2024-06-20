@@ -174,7 +174,7 @@ def main(argv):
                 "max_length": f"{args.max_length}", "learning_rate": f"{args.learning_rate}",
                 "data_length": f"{args.data_length}", "gradient_steps": f"{args.gradient_steps}"
             }
-            with open(f"{saved_model_dir}/hyperparams.json", "w") as f:
+            with open(f"{saved_model_dir}/{saved_model_name}/hyperparams.json", "w") as f:
                 json.dump(hyperparams, f)
 
         trainer.accelerator.wait_for_everyone()
