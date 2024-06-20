@@ -5,6 +5,7 @@
 
 import os
 import sys
+import json
 import random
 
 from datetime import datetime
@@ -36,7 +37,7 @@ def argparser():
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
     ap.add_argument("--gradient_steps", type=int)
-    ap.add_argument("--save_steps", type=int)   # checkpoints don't work for now
+    ap.add_argument("--save_steps", type=int)   # checkpoints don't work for now, please don't use
     ap.add_argument("--model", default=default_model)
     ap.add_argument("--tokenizer", default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
@@ -167,6 +168,15 @@ def main(argv):
                 safe_serialization=args.safetensors
             )
             print(f"Fine-tuned model saved in {saved_model_dir}/{saved_model_name}.")
+
+            hyperparams = {
+                "batch_size": f"{args.batch_size}", "epochs": f"{args.epochs}", "seed": f"{args.seed}",
+                "max_length": f"{args.max_length}", "learning_rate": f"{args.learning_rate}",
+                "data_length": f"{args.data_length}", "gradient_steps": f"{args.gradient_steps}"
+            }
+            with open(f"{saved_model_dir}/hyperparams.json", "w") as f:
+                json.dump(hyperparams, f)
+
         trainer.accelerator.wait_for_everyone()
         trainer.accelerator.end_training()
 
