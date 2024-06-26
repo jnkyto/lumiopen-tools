@@ -28,7 +28,6 @@ saved_model_dir = "./output"  # without trailing forward-slash
 
 def argparser():
     ap = ArgumentParser()
-    ap.add_argument("--key", default="text")
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--max_length", type=int, default=1024)
     ap.add_argument("--batch_size", "-b", type=int, default=16)
@@ -37,9 +36,12 @@ def argparser():
     ap.add_argument("--seed", "-s", type=int, default=42)
     ap.add_argument("--data_length", type=int, default=8192)
     ap.add_argument("--gradient_steps", type=int, default=1)
+    ap.add_argument("--warmup_steps", type=int, default=0)
+    ap.add_argument("--eval_steps", type=int, default=100)
+    ap.add_argument("--logging_steps", type=int, default=100)
     ap.add_argument("--save_steps", type=int, default=0)   # checkpoints don't work for now
-    ap.add_argument("--model", default=default_model)
-    ap.add_argument("--tokenizer", default=default_model)
+    ap.add_argument("--model", type=str, default=default_model)
+    ap.add_argument("--tokenizer", type=str, default=default_model)
     ap.add_argument("--dry_run", "-d", action="store_true")
     ap.add_argument("--safetensors", action="store_true")
     return ap
@@ -94,10 +96,10 @@ def main(argv):
     if not args.dry_run:
         train_args = TrainingArguments(
             output_dir="train_output",
-            warmup_steps=10,
-            logging_steps=100,
+            warmup_steps=args.warmup_steps,
+            logging_steps=args.logging_steps,
 
-            eval_steps=200,
+            eval_steps=args.eval_steps,
             evaluation_strategy="steps",
 
             save_strategy="steps" if args.save_steps != 0 else "no",
