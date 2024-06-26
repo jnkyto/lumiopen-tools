@@ -181,7 +181,7 @@ def main(argv):
                 "batch_size": args.batch_size, "epochs": args.epochs, "seed": args.seed,
                 "max_length": args.max_length, "learning_rate": f"{args.learning_rate}",
                 "data_length": args.data_length, "gradient_checkpointing": train_args.gradient_checkpointing,
-                "gradient_steps": args.gradient_steps
+                "gradient_steps": args.gradient_steps, "warmup_steps": args.warmup_steps
             }
             with open(f"{saved_model_dir}/{saved_model_name}/hyperparams.json", "w") as f:
                 json.dump(hyperparams, f)
