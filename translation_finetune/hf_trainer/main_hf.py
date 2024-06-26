@@ -89,9 +89,6 @@ def main(argv):
     dataset_train = preprocess(ds["train"])
     dataset_test = preprocess(ds["test"])
 
-    # print(dataset_train[0])
-    # print(dataset_test[0])
-
     # Create model output directory if it doesn't exist
     if not args.dry_run:
         train_args = TrainingArguments(
