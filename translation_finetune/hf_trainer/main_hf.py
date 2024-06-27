@@ -105,6 +105,7 @@ def main(argv):
 
             gradient_checkpointing=True if args.gradient_steps >= 1 else False,
             gradient_accumulation_steps=args.gradient_steps,
+            gradient_checkpointing_kwargs={'use_reentrant': False} if args.gradient_steps >= 1 else {},
 
             num_train_epochs=args.epochs,
             per_device_eval_batch_size=args.batch_size,
