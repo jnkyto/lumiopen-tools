@@ -21,8 +21,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 def argparser():
     ap = ArgumentParser()
     ap.add_argument("files", type=argparse.FileType('r'), metavar='F', nargs='+')
-    ap.add_argument("--model", default=default_model)
-    ap.add_argument("--tokenizer", default=default_model)
+    ap.add_argument("--model", default=default_model, type=str)
+    ap.add_argument("--tokenizer", default=default_model, type=str)
     return ap
 
 

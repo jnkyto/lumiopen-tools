@@ -30,13 +30,22 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 def argparser():
     ap = ArgumentParser()
     data_choices = ["europarl", "elrcnord", "ted2020", "opensubtitles", "elrcfinfo", "tatoeba"]
-    ap.add_argument("-d", "--dataset", choices=data_choices, required=True)
-    ap.add_argument("-p", "--per", default=10)
-    ap.add_argument("-b", "--bands", default=10)
-    ap.add_argument("-t", "--thold", default=0.03)
-    ap.add_argument("-l", "--minlen", default=2)
-    ap.add_argument("-m", "--model", default=DEFAULT_MODEL)
-    ap.add_argument("--dry", dest="dry_run", action="store_true",default=False)
+    ap.add_argument("-d", "--dataset", choices=data_choices, required=True, type=str,
+                    help="The dataset to be used.")
+    ap.add_argument("-p", "--per", default=10, type=int,
+                    help="The amount of samples per examination point.")
+    ap.add_argument("-b", "--bands", default=10, type=int,
+                    help="The amount of examination points on the dataset.")
+    ap.add_argument("-t", "--thold", default=0.03, type=float,
+                    help="The amount of index variation per examination point.")
+    ap.add_argument("-l", "--minlen", default=2, type=int,
+                    help="The minimum sample length (word count).")
+    ap.add_argument("-m", "--model", default=DEFAULT_MODEL, type=str,
+                    help="The model to be used for translation.")
+    ap.add_argument("--tokenizer", default=DEFAULT_MODEL, type=str,
+                    help="The tokenizer to be used.")
+    ap.add_argument("--dry", dest="dry_run", action="store_true", default=False,
+                    help="Only do sampling and skip translation.")
     return ap
 
 
@@ -57,10 +66,12 @@ def main(argv):
         case "tatoeba":
             sampled_data = d_tatoeba.main(int(args.per), int(args.bands), float(args.thold), int(args.minlen))
         case "opensubtitles":
-            # Discouraged
+            logging.warning(
+                "The parallelization on the OpenSubtitles dataset is very poor; benchmarking with it is discouraged!"
+            )
             sampled_data = d_opensubtitles.main(int(args.per), int(args.bands), float(args.thold), int(args.minlen))
         case _:
-            logging.error("Match-case defaulted somehow (???). Program will exit.")
+            logging.error("Unknown match-case default. Program will exit.")
             sys.exit(1)
 
     if not args.dry_run:
@@ -81,11 +92,6 @@ def main(argv):
         logging.info("Skipped translation due to dry run being toggled.")
 
     return 0
-
-    # TODO:
-    # Use Poro to translate English texts to Finnish // kinda done
-    # Calculate spBLEU of already translated text and Poro translated text, compare
-    # Draw graph or get values to draw one
 
 
 if __name__ == "__main__":

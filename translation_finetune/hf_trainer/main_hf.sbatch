@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=ft_tr_poro
+#SBATCH --job-name=ft_mt_poro_hftr
 #SBATCH --account=project_462000558
-#SBATCH --time=01:30:00
+#SBATCH --time=00:30:00
 #SBATCH --partition=dev-g
 #SBATCH --mem=480G
-#SBATCH --nodes=3
+#SBATCH --nodes=6
 #SBATCH --cpus-per-task=56
 #SBATCH --gpus-per-node=8
 #SBATCH --ntasks-per-node=1
@@ -31,7 +31,7 @@ echo "PWD:" $PWD
 
 module use /appl/local/csc/modulefiles
 module load pytorch
-export HF_HOME=/scratch/project_462000558/cache
+export HF_HOME=/scratch/project_462000558/hf_cache
 
 # Variables for distributed enviroment
 export MASTER_PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
@@ -49,6 +49,8 @@ export TOKENIZERS_PARALLELISM=false #Removes error involved with the FastTokeniz
 # Accelerate config for distributed training
 ACCELERATE_CONFIG_FILE=config/deepspeed_zero3.yaml
 
+echo "JOB $SLURM_JOBID START TIME: $(date)"
+
 echo "JOBNAME:" $SLURM_JOB_NAME
 echo "CONFIG:" $ACCELERATE_CONFIG_FILE
 
@@ -56,7 +58,7 @@ echo "CONFIG:" $ACCELERATE_CONFIG_FILE
 # THIS IS PROBABLY WHAT YOU WANT TO TWEAK #
 ###########################################
 export CMD=" \
-    main_hf.py -b 2 -e 2"
+    main_hf.py --batch_size 16 --epochs 8 --seed 391 --max_length 256 --learning_rate 1e-5 --data_length 80000 --gradient_steps 2 --warmup_steps 0 --eval_steps 100 --logging_steps 10 --safetensors"
 
 # Accelerate launcher
 export ACC_LAUNCHER="singularity_wrapper exec accelerate launch \
@@ -77,5 +79,4 @@ SRUN_ARGS=" \
 
 srun $SRUN_ARGS --jobid $SLURM_JOBID bash -c "$ACC_LAUNCHER --role \$SLURMD_NODENAME: $CMD"
 
-echo "END TIME: $(date)"
-echo "END $SLURM_JOBID: $(date)"
+echo "JOB $SLURM_JOBID END TIME: $(date)"
