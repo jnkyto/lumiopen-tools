@@ -7,7 +7,6 @@ import os
 import sys
 import json
 import random
-import torch.distributed as dist
 
 from datetime import datetime
 from argparse import ArgumentParser
@@ -89,9 +88,6 @@ def main(argv):
 
     dataset_train = preprocess(ds["train"])
     dataset_test = preprocess(ds["test"])
-
-    if dist.is_available() and dist.is_initialized():
-        dist.barrier()
 
     # Create model output directory if it doesn't exist
     if not args.dry_run:
